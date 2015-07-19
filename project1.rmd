@@ -1,0 +1,109 @@
+---
+title: "Data reproducible research"
+
+---
+This assignment makes use of data from a personal activity monitoring device. This device collects data at 5 minute intervals through out the day. The data consists of two months of data from an anonymous individual collected during the months of October and November, 2012 and include the number of steps taken in 5 minute intervals each day.
+
+##load necessary packages. Check working directory.Downloan data into working directory.
+
+```{r}
+library(ggplot2)
+library(knitr)
+getwd()
+```
+
+##Load the data and use Head function to preview the data.
+
+```{r}
+Activity <- read.csv("./activity.csv", header=TRUE, colClasses=c("numeric", "Date","numeric"))
+head(Activity)
+
+```
+#Question1: What is mean total number of steps taken per day?
+First, remove NA from dataframe. Use aggregate function to caculate steps for each days. Make a histgram. 
+
+```{r}
+compl_Activity<-Activity[complete.cases(Activity),] 
+steps_perday <- aggregate(steps ~ date, compl_Activity, sum) 
+hist(steps_perday$steps, main="Steps/day", breaks=20)
+```
+
+Calcuate mean of step numer per day.
+```{r}
+mean(steps_perday$step)
+```
+#Question2: What is the average daily activity pattern?
+Use aggregate function to calculate average steps for each interval. make a plot for daily activity pattern. 
+
+```{r}
+steps_perinterval<- aggregate(steps ~ interval, compl_Activity, mean) 
+ggplot(steps_perinterval, aes(x=interval, y=steps)) +   
+        geom_line(color="gray", size=1) +  
+        labs(title="Daily Activity Pattern", x="Interval", y="Number of Steps") +  
+        theme_bw()
+
+```
+
+Calculate the maximal steps of a single interval. 
+
+```{r}
+maxinterval <- which.max(compl_Activity$steps)
+maxinterval
+
+```
+#Question3 if replacing NA with average steps per interval will histgram of avarage steps per day change?
+First calculate missing number.
+
+```{r}
+activity_NA <- sum(is.na(Activity))
+activity_NA
+
+```
+
+Then fill the NA with average steps perday, make a histogram.
+
+```{r}
+StepsAverage <- aggregate(steps ~ interval, compl_Activity, mean)
+fillNA <- numeric()
+for (i in 1:nrow(Activity)) {
+    obs <- Activity[i, ]
+    if (is.na(obs$steps)) {
+        steps <- subset(StepsAverage, interval == obs$interval)$steps
+    } else {
+        steps <- obs$steps
+    }
+    fillNA <- c(fillNA, steps)
+}
+
+Filledactivity <- Activity
+Filledactivity$steps <- fillNA
+
+Newsteps_perday <- aggregate(steps ~ date, Filledactivity, sum) 
+hist(Newsteps_perday$steps, main="steps/day", breaks=20)
+
+```
+
+Mean of stepnumber per day in the filled dataset
+
+```{r}
+mean(Newsteps_perday$steps)
+```
+Conclusion: the mean of number of steps perday does not change if fill NA with average steps per interval.
+
+#Question 4 Are there differences in activity patterns between weekdays and weekends?
+```{r}
+weekLabels <- function(date) {
+  if (weekdays(as.Date(date)) %in% c("Saturday", "Sunday")) { "Weekend"}
+  else { "Weekday" } }
+
+Filledactivity$weekLabels <- as.factor(sapply(Filledactivity$date, weekLabels))
+par(mfrow=c(2,1))
+for (type in c("Weekend", "Weekday")) {
+intervalAvg <- aggregate(steps~interval, data=Filledactivity,
+subset=Filledactivity$weekLabels==type, FUN=mean); 
+plot(intervalAvg, type="s", main=type, col="blue")
+      }
+
+```
+
+Conclusion: Weekday activity and weekend activity show differences.
